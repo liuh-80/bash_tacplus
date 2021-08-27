@@ -30,11 +30,15 @@
  */
  
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
+#include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <syslog.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /* Tacacs+ lib */
 #include <libtac/libtac.h>
@@ -42,7 +46,11 @@
 /* Tacacs+ support lib */
 #include <libtac/support.h>
 
+/* Config file path */
 const char *tacacs_config_file = "/etc/tacplus_servers";
+
+/* Config file attribute */
+struct stat config_file_attr;
 
 /* Tacacs server config data */
 typedef struct {
@@ -265,9 +273,9 @@ int authorization_with_host_and_tty(const char *user, const char *cmd, char **ar
 }
 
 /*
- * Tacacs plugin initialization.
+ * Load tacacs config.
  */
-void plugin_init ()
+void load_tacacs_config()
 {
     // load config file: tacacs_config_file
     tacacs_ctrl = parse_config_file (tacacs_config_file);
@@ -278,6 +286,44 @@ void plugin_init ()
     for(server_idx = 0; server_idx < tac_srv_no; server_idx++) {
         output_verbose("Server %d, address:%s, key:%s\n", server_idx, tac_ntop(tac_srv[server_idx].addr->ai_addr),tac_srv[server_idx].key);
     }
+}
+
+/*
+ * Load tacacs config.
+ */
+void check_and_load_changed_tacacs_config()
+{
+	struct stat attr;
+	// get config file stat, check if file changed
+    stat(tacacs_config_file, &attr);
+	if (difftime(attr.st_mtime, config_file_attr.st_mtime) == 0) {
+		return;
+	}
+	
+	// config file changed, update file stat and reload config.
+	config_file_attr = attr;
+	
+    // load config file: tacacs_config_file
+    tacacs_ctrl = parse_config_file (tacacs_config_file);
+
+    output_verbose("tacacs plugin initialized.\n");
+    output_verbose("tacacs config:\n");
+    int server_idx;
+    for(server_idx = 0; server_idx < tac_srv_no; server_idx++) {
+        output_verbose("Server %d, address:%s, key:%s\n", server_idx, tac_ntop(tac_srv[server_idx].addr->ai_addr),tac_srv[server_idx].key);
+    }
+}
+
+/*
+ * Tacacs plugin initialization.
+ */
+void plugin_init ()
+{
+	// get config file stat, will use this to check config file changed
+    stat(tacacs_config_file, &config_file_attr);
+	
+    // load config file: tacacs_config_file
+    load_tacacs_config();
 }
 
 /*
@@ -314,6 +360,9 @@ int on_shell_execve (char *user, int shell_level, char *cmd, char **argv)
         output_verbose("Recursive command %s ignored.\n", cmd);
         return 0;
     }
+	
+	// reload config file when tacacs config changed
+	check_and_load_changed_tacacs_config();
 
     int ret = authorization_with_host_and_tty(user, cmd, argv, argc);
     switch (ret) {
