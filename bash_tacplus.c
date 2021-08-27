@@ -1,8 +1,40 @@
+/* bash_tacplus.c - Bash plugin for TACACS+ protocol.
+ * Copyright (C) 2021, Liu Hua <liuh@microsoft.com>
+ *
+ *   TACACS+ work based on pam_tacplus.c
+ *     Copyright (C) 2010, Pawel Krawczyk <pawel.krawczyk@hush.com> and
+ *     Jeroen Nijhof <jeroen@jeroennijhof.nl>
+ *
+ *   TACACS+ authorization work based on tacplus-auth.c
+ *     https://github.com/daveolson53/tacplus-auth/blob/master/tacplus-auth.c
+ *     Copyright 2016 Cumulus Networks, Inc.  All rights reserved.
+ *     Author: Dave Olson <olson@cumulusnetworks.com>
+ *     Cumulus Networks, Inc.
+ *     185 E. Dana Street
+ *     Mountain View, CA 94041
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program - see the file COPYING.
+ *
+ * See `CHANGES' file for revision history.
+ */
+ 
 #include <stdio.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <syslog.h>
 
 /* Tacacs+ lib */
 #include <libtac/libtac.h>
@@ -24,15 +56,17 @@ static int tacacs_ctrl;
 /*
  * Output verbose log.
  */
-void output_verbose_log (const char *format, ...)
+void output_verbose(const char *format, ...)
 {
   /* RODO: change to write log file*/
   va_list args;
 
   fprintf (stderr, "TACACS+: ");
+  syslog(LOG_INFO,"TACACS+: ");
 
   va_start (args, format);
   vfprintf (stderr, format, args);
+  syslog(LOG_INFO, format, args);
   va_end (args);
 }
 
@@ -41,12 +75,13 @@ void output_verbose_log (const char *format, ...)
  */
 void output_error (const char *format, ...)
 {
-  va_list args;
-  
   fprintf (stderr, "TACACS+: ");
-  
+  syslog(LOG_ERR,"TACACS+: ");
+
+  va_list args;
   va_start (args, format);
   vfprintf (stderr, format, args);
+  syslog(LOG_ERR, format, args);
   va_end (args);
 }
 
@@ -68,6 +103,10 @@ void output_debug (const char *format, ...)
 }
 
 
+/*
+ * Send authorization message.
+ * This method based on send_auth_msg in https://github.com/daveolson53/tacplus-auth/blob/master/tacplus-auth.c
+ */
 int send_authorization_message(
     int tac_fd,
     const char *user,
@@ -139,6 +178,7 @@ int send_authorization_message(
 
 /*
  * Send tacacs authorization request.
+ * This method based on send_tacacs_auth in https://github.com/daveolson53/tacplus-auth/blob/master/tacplus-auth.c
  */
 int tacacs_authorization(
     const char *user,
@@ -185,6 +225,7 @@ int tacacs_authorization(
 
 /*
  * Send authorization request.
+ * This method based on build_auth_req in https://github.com/daveolson53/tacplus-auth/blob/master/tacplus-auth.c
  */
 int authorization_with_host_and_tty(const char *user, const char *cmd, char **argv, int argc)
 {
@@ -231,11 +272,11 @@ void plugin_init ()
     // load config file: tacacs_config_file
     tacacs_ctrl = parse_config_file (tacacs_config_file);
 
-    output_verbose_log("tacacs plugin initialized.\n");
-    output_verbose_log("tacacs config:\n");
+    output_verbose("tacacs plugin initialized.\n");
+    output_verbose("tacacs config:\n");
     int server_idx;
     for(server_idx = 0; server_idx < tac_srv_no; server_idx++) {
-        output_verbose_log ("Server %d, address:%s, key:%s\n", server_idx, tac_ntop(tac_srv[server_idx].addr->ai_addr),tac_srv[server_idx].key);
+        output_verbose("Server %d, address:%s, key:%s\n", server_idx, tac_ntop(tac_srv[server_idx].addr->ai_addr),tac_srv[server_idx].key);
     }
 }
 
@@ -244,7 +285,7 @@ void plugin_init ()
  */
 void plugin_uninit ()
 {
-    output_verbose_log("tacacs plugin un-initialize.");
+    output_verbose("tacacs plugin un-initialize.");
 }
 
 /*
@@ -252,16 +293,16 @@ void plugin_uninit ()
  */
 int on_shell_execve (char *user, int shell_level, char *cmd, char **argv)
 {
-    output_verbose_log ("Authorization parameters:\n");
-    output_verbose_log ("    Shell level: %d\n", shell_level);
-    output_verbose_log ("    Current user: %s\n", user);
-    output_verbose_log ("    Command full path: %s\n", cmd);
-    output_verbose_log ("    Parameters:\n");
+    output_verbose("Authorization parameters:\n");
+    output_verbose("    Shell level: %d\n", shell_level);
+    output_verbose("    Current user: %s\n", user);
+    output_verbose("    Command full path: %s\n", cmd);
+    output_verbose("    Parameters:\n");
     char **parameter_array_pointer = argv;
     int argc = 0;
     while (*parameter_array_pointer != 0) {
         // output parameter
-        output_verbose_log ("        %s\n", *parameter_array_pointer);
+        output_verbose("        %s\n", *parameter_array_pointer);
         
         // move to next parameter
         parameter_array_pointer++;
@@ -270,21 +311,21 @@ int on_shell_execve (char *user, int shell_level, char *cmd, char **argv)
     
     // when shell_level > 1, it's a recursive command in shell script.
     if (shell_level > 2) {
-        output_verbose_log ("Recursive command %s ignored.\n", cmd);
+        output_verbose("Recursive command %s ignored.\n", cmd);
         return 0;
     }
 
     int ret = authorization_with_host_and_tty(user, cmd, argv, argc);
     switch (ret) {
         case 0:
-            output_verbose_log ("%s authorize successed by TACACS+ with given arguments\n", cmd);
+            output_verbose("%s authorize successed by TACACS+ with given arguments\n", cmd);
         break;
         case 2:
             /*  -2 means no servers, so already a message */
-            output_verbose_log ("%s not authorized by TACACS+ with given arguments, not executing\n", cmd);
+            output_verbose("%s not authorized by TACACS+ with given arguments, not executing\n", cmd);
         break;
         default:
-            output_verbose_log ("%s authorize failed by TACACS+ with given arguments, not executing\n", cmd);
+            output_verbose("%s authorize failed by TACACS+ with given arguments, not executing\n", cmd);
         break;
     }
     
