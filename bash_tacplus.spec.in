@@ -12,7 +12,6 @@ Release: 1%{?dist}
 Summary: Bash Tacacs+ module
 Group: System
 License: GPL
-URL: https://github.com/liuh-80/bash_tacplus
 
 # Packager Information
 Packager: NRB
@@ -21,14 +20,14 @@ Packager: NRB
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 # Source Information
-Source0: https://github.com/liuh-80/bash_tacplus
+Source: https://github.com/liuh-80/bash_tacplus
 
 # Dependency Information
 BuildRequires: gcc binutils
 Requires: bash
 
 %description
-Bash Tacacs+ plugin based on code produced by Liu Hua <liuh@microsoft.com>
+Bash Tacacs+ plugin based on pam_tacplus produced by Pawel Krawczyk <pawel.krawczyk@hush.com> and Jeroen Nijhof <jeroen@jeroennijhof.nl> and tacplus-auth produced by Dave Olson <olson@cumulusnetworks.com>.
 
 %package devel
 Group: Development/Libraries
@@ -54,7 +53,7 @@ install -m 755 .libs/bash_tacplus.so
 chmod 755 $RPM_BUILD_ROOT/%{_lib}/security/*.so*
 
 make install DESTDIR=$RPM_BUILD_ROOT
-chmod 755 $RPM_BUILD_ROOT/usr/local/include/libtac
+chmod 755 $RPM_BUILD_ROOT/usr/local/include/bash_tacplus
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
@@ -76,5 +75,5 @@ chmod 755 $RPM_BUILD_ROOT/usr/local/include/libtac
 %doc /usr/local/share/doc/*
 
 %changelog
-* Tue Aug 24 2021 - Liu Hua <liuh@microsoft.com>
-- First version
+* Fri Aug 27 2021 - Liu Hua <liuh@microsoft.com>
+- Path changed for bash_tacplus.so
