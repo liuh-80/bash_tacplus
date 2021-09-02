@@ -46,6 +46,11 @@
 /* Tacacs+ support lib */
 #include <libtac/support.h>
 
+/* Output syslog to mock method when build with UT */
+#if defined (BASH_PLUGIN_UT)
+#       define syslog mock_syslog
+#endif
+
 /* Config file path */
 const char *tacacs_config_file = "/etc/tacplus_servers";
 
@@ -59,23 +64,26 @@ typedef struct {
 } tacacs_server_t;
 
 /* Tacacs control flag */
-static int tacacs_ctrl;
+int tacacs_ctrl;
 
 /*
  * Output verbose log.
  */
 void output_verbose(const char *format, ...)
 {
-  /* RODO: change to write log file*/
-  va_list args;
-
   fprintf (stderr, "TACACS+: ");
   syslog(LOG_INFO,"TACACS+: ");
-
+  
+  // convert log to a string because va args resoursive issue:
+  // http://www.c-faq.com/varargs/handoff.html
+  char logBuffer[512];
+  va_list args;
   va_start (args, format);
-  vfprintf (stderr, format, args);
-  syslog(LOG_INFO, format, args);
+  vsnprintf(logBuffer, sizeof(logBuffer), format, args);
   va_end (args);
+
+  fprintf (stderr, logBuffer);
+  syslog(LOG_INFO, logBuffer);
 }
 
 /*
@@ -85,12 +93,17 @@ void output_error (const char *format, ...)
 {
   fprintf (stderr, "TACACS+: ");
   syslog(LOG_ERR,"TACACS+: ");
-
+  
+  // convert log to a string because va args resoursive issue:
+  // http://www.c-faq.com/varargs/handoff.html
+  char logBuffer[512];
   va_list args;
   va_start (args, format);
-  vfprintf (stderr, format, args);
-  syslog(LOG_ERR, format, args);
+  vsnprintf(logBuffer, sizeof(logBuffer), format, args);
   va_end (args);
+
+  fprintf (stderr, logBuffer);
+  syslog(LOG_ERR, logBuffer);
 }
 
 /*
@@ -101,13 +114,16 @@ void output_debug (const char *format, ...)
   if ((tacacs_ctrl & PAM_TAC_DEBUG) == 0) {
       return;
   }
-
+  
+  // convert log to a string because va args resoursive issue:
+  // http://www.c-faq.com/varargs/handoff.html
+  char logBuffer[512];
   va_list args;
   va_start (args, format);
-
-  output_error (format, args);
-
+  vsnprintf(logBuffer, sizeof(logBuffer), format, args);
   va_end (args);
+  
+  output_error (logBuffer);
 }
 
 
