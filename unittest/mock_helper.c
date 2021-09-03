@@ -129,6 +129,13 @@ void tac_free_attrib(struct tac_attrib **attr)
 int tac_author_send(int tac_fd, const char *user, char *tty, char *host,struct tac_attrib *attr)
 {
 	debug_printf("MOCK: tac_author_send with fd: %d, user:%s, tty:%s, host:%s, attr:%p\n", tac_fd, user, tty, host, attr);
+	if(TEST_SCEANRIO_CONNECTION_SEND_FAILED_RESULT == test_scenario)
+	{
+		// send auth message failed
+		return -1;
+	}
+	
+	return 0;
 }
 
 /* Mock tac_author_read method */
@@ -136,6 +143,21 @@ int tac_author_read(int tac_fd, struct areply *reply)
 {
 	// TODO: fill reply message here for test
 	debug_printf("MOCK: tac_author_read with fd: %d\n", tac_fd);
+	if (TEST_SCEANRIO_CONNECTION_SEND_SUCCESS_READ_FAILED == test_scenario)
+	{
+		return -1;
+	}
+	
+	if (TEST_SCEANRIO_CONNECTION_SEND_DENINED_RESULT == test_scenario)
+	{
+		reply->status = AUTHOR_STATUS_FAIL;
+	}
+	else
+	{
+		reply->status = AUTHOR_STATUS_PASS_REPL;
+	}
+	
+	return 0;
 }
 
 /* Mock tac_connect_single method */

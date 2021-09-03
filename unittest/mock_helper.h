@@ -24,7 +24,11 @@
 /* Mock syslog buffer */
 extern char mock_syslog_message_buffer[1024];
 
-#define TEST_SCEANRIO_CONNECTION_ALL_FAILED			1
+#define TEST_SCEANRIO_CONNECTION_ALL_FAILED				1
+#define TEST_SCEANRIO_CONNECTION_SEND_FAILED_RESULT			2
+#define TEST_SCEANRIO_CONNECTION_SEND_SUCCESS_READ_FAILED			3
+#define TEST_SCEANRIO_CONNECTION_SEND_DENINED_RESULT			4
+#define TEST_SCEANRIO_CONNECTION_SEND_SUCCESS_RESULT			5
 
 /* Set test scenario for test*/
 void set_test_scenario(int scenario);
