@@ -71,13 +71,13 @@ void testcase_tacacs_authorization_denined() {
 	testargv[0] = "arg1";
 	testargv[1] = "arg2";
 	
-	// test connection failed case
+	// test connection denined case
 	set_test_scenario(TEST_SCEANRIO_CONNECTION_SEND_DENINED_RESULT);
 	int result = tacacs_authorization("test_user","tty0","test_host","test_command",testargv,2);
 
 	CU_ASSERT_STRING_EQUAL(mock_syslog_message_buffer, "test_command not authorized from TestAddress2\n");
 
-    // send auth message failed.
+    // send auth message denined.
 	CU_ASSERT_EQUAL(result, 1);
 }
 
@@ -87,12 +87,88 @@ void testcase_tacacs_authorization_success() {
 	testargv[0] = "arg1";
 	testargv[1] = "arg2";
 	
-	// test connection failed case
+	// test connection success case
 	set_test_scenario(TEST_SCEANRIO_CONNECTION_SEND_SUCCESS_RESULT);
 	int result = tacacs_authorization("test_user","tty0","test_host","test_command",testargv,2);
 
-    // send auth message failed.
+	// wuthorization success
 	CU_ASSERT_EQUAL(result, 0);
+}
+
+/* Test authorization_with_host_and_tty get success case */
+void testcase_authorization_with_host_and_tty_success() {
+	char *testargv[2];
+	testargv[0] = "arg1";
+	testargv[1] = "arg2";
+	
+	// test connection success case
+	set_test_scenario(TEST_SCEANRIO_CONNECTION_SEND_SUCCESS_RESULT);
+	int result = authorization_with_host_and_tty("test_user","test_command",testargv,2);
+
+	// wuthorization success
+	CU_ASSERT_EQUAL(result, 0);
+}
+
+/* Test check_and_load_changed_tacacs_config */
+void testcase_check_and_load_changed_tacacs_config() {
+	
+	// test connection failed case
+	check_and_load_changed_tacacs_config();
+
+    // check server config updated.
+	CU_ASSERT_STRING_EQUAL(mock_syslog_message_buffer, "Server 2, address:TestAddress2, key:key2\n");
+	
+	// check and load file again.
+	check_and_load_changed_tacacs_config();
+
+    // check server config not update.
+	char* configNotChangeLog = "tacacs config file not change: last modified time";
+	CU_ASSERT_TRUE(strncmp(mock_syslog_message_buffer, configNotChangeLog, strlen(configNotChangeLog)) == 0);
+}
+
+/* Test on_shell_execve authorization successed */
+void testcase_on_shell_execve_success() {
+	char *testargv[2];
+	testargv[0] = "arg1";
+	testargv[1] = "arg2";
+	testargv[2] = 0;
+	
+	// test connection failed case
+	set_test_scenario(TEST_SCEANRIO_CONNECTION_SEND_SUCCESS_RESULT);
+	on_shell_execve("test_user", 1, "test_command", testargv);
+
+    // check authorized success.
+	CU_ASSERT_STRING_EQUAL(mock_syslog_message_buffer, "test_command authorize successed by TACACS+ with given arguments\n");
+}
+
+/* Test on_shell_execve authorization denined */
+void testcase_on_shell_execve_denined() {
+	char *testargv[2];
+	testargv[0] = "arg1";
+	testargv[1] = "arg2";
+	testargv[2] = 0;
+	
+	// test connection failed case
+	set_test_scenario(TEST_SCEANRIO_CONNECTION_SEND_DENINED_RESULT);
+	on_shell_execve("test_user", 1, "test_command", testargv);
+
+    // check authorized failed.
+	CU_ASSERT_STRING_EQUAL(mock_syslog_message_buffer, "test_command authorize failed by TACACS+ with given arguments, not executing\n");
+}
+
+/* Test on_shell_execve authorization failed */
+void testcase_on_shell_execve_failed() {
+	char *testargv[2];
+	testargv[0] = "arg1";
+	testargv[1] = "arg2";
+	testargv[2] = 0;
+	
+	// test connection failed case
+	set_test_scenario(TEST_SCEANRIO_CONNECTION_ALL_FAILED);
+	on_shell_execve("test_user", 1, "test_command", testargv);
+
+    // check not authorized.
+	CU_ASSERT_STRING_EQUAL(mock_syslog_message_buffer, "test_command not authorized by TACACS+ with given arguments, not executing\n");
 }
 
 int main(void) {
@@ -115,7 +191,12 @@ int main(void) {
 	  || !CU_add_test(ste, "Test testcase_tacacs_authorization_faled()...\n", testcase_tacacs_authorization_faled)
 	  || !CU_add_test(ste, "Test testcase_tacacs_authorization_read_failed()...\n", testcase_tacacs_authorization_read_failed)
 	  || !CU_add_test(ste, "Test testcase_tacacs_authorization_denined()...\n", testcase_tacacs_authorization_denined)
-	  || !CU_add_test(ste, "Test testcase_tacacs_authorization_success()...\n", testcase_tacacs_authorization_success)) {
+	  || !CU_add_test(ste, "Test testcase_tacacs_authorization_success()...\n", testcase_tacacs_authorization_success)
+	  || !CU_add_test(ste, "Test testcase_authorization_with_host_and_tty_success()...\n", testcase_authorization_with_host_and_tty_success)
+	  || !CU_add_test(ste, "Test testcase_check_and_load_changed_tacacs_config()...\n", testcase_check_and_load_changed_tacacs_config)
+	  || !CU_add_test(ste, "Test testcase_on_shell_execve_success()...\n", testcase_on_shell_execve_success)
+	  || !CU_add_test(ste, "Test testcase_on_shell_execve_denined()...\n", testcase_on_shell_execve_denined)
+	  || !CU_add_test(ste, "Test testcase_on_shell_execve_failed()...\n", testcase_on_shell_execve_failed)) {
     CU_cleanup_registry();
     return CU_get_error();
   }
